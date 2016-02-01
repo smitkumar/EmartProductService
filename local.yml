@@ -1,0 +1,4 @@
+couchbase.nodes:
+- http://localhost:8080
+couchbase.bucket: Product-Info
+couchbase.password: 

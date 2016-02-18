@@ -125,6 +125,7 @@ public class ProductResource {
 		// retrieve information about the reward with the provided id
 		 JsonDocument doc=null;
 		System.out.println("productId"+productId);
+		log.info("productId"+productId);
 		 asyncResponse.setTimeoutHandler(new TimeoutHandler() {
 			  
 	         @Override
@@ -133,7 +134,7 @@ public class ProductResource {
 	                     .entity("Service is taking long time to responde !!! Please retry again after some time.").build());
 	         }
 	     });
-	     asyncResponse.setTimeout(7, TimeUnit.SECONDS);
+	     asyncResponse.setTimeout(7, TimeUnit.SECONDS);  // time out after waiting for response till 7 second.
 	     
 	     new Thread(new Runnable() {
 	  
@@ -147,7 +148,12 @@ public class ProductResource {
 	         }
 	  
 	         private JsonDocument veryExpensiveOperation() {
-	             // ... very expensive operation that typically finishes within 30 seconds
+	             /* very expensive operation that typically finishes within 5 to 10 seconds
+	              * If service take less than or equal to 6 second then resturn success otherwise service unavailable response to retry.
+	              * 
+	              * Ideally if service take more than 5 second to respond than app should
+	              *  fall back to same service running on different node and return the proper response to the user.
+	        	 */
 	        	 JsonDocument doc=null;
 	        	 try{	        		
 	        		System.out.println("Inside the fetchproductById");

@@ -132,7 +132,7 @@ public class DataBaseManager {
 	     * @param ids
 	     * @return
 	     */
-	    public List<JsonDocument> batchGet(final Collection<String> ids) {
+	   public List<JsonDocument> batchGet(final Collection<String> ids) {
 	        return Observable
 	            .from(ids)
 	            .flatMap(new Func1<String, Observable<JsonDocument>>() {

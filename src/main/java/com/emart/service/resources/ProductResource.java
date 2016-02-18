@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
 import rx.Observable;
 
 
@@ -19,6 +21,9 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.container.AsyncResponse;
+import javax.ws.rs.container.Suspended;
+import javax.ws.rs.container.TimeoutHandler;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.PathSegment;
@@ -37,6 +42,10 @@ import com.emart.app.main.CauchbaseConfiguration;
 import com.emart.database.couchbase.DataBaseManager;
 import com.emart.service.model.ProductInfo;
 import com.emart.service.util.Constant;
+import com.emart.service.util.Util;
+import com.netflix.hystrix.HystrixCommand;
+import com.netflix.hystrix.HystrixCommandGroupKey;
+
 
 
 @Path("/product")
@@ -45,13 +54,14 @@ public class ProductResource {
 	
 	private static final Logger log=Logger.getLogger(ProductResource.class.getName());
 	
-   
+    
 	private DataBaseManager service =null; 
 	
 	public ProductResource(){
 		   
 	}
 	public ProductResource(CauchbaseConfiguration config){
+		
 		   service = new DataBaseManager(config);
 		   System.out.println("service object initilized :"+service);
 		   log.info("service object initilized :"+service);
@@ -87,9 +97,9 @@ public class ProductResource {
 	            System.out.println("doc :"+doc);
 	            System.out.println("service2 ::::::::::: :"+service);
 	            Observable<JsonDocument> returnObservable = service.createAsync(doc);
-	            returnObservable.forEach(jsonDoc->{
+	            /*returnObservable.forEach(jsonDoc->{
 	            		
-	            });
+	            });*/
 	            
 	            //Response.ok().status(Status.CREATED).build();
 	            return Response.created(null).status(Status.CREATED).build();
@@ -111,11 +121,61 @@ public class ProductResource {
 	
 	@GET
 	@Path("/{id}")
-	public Response fetchProductById(@PathParam("id") String productId) {
+	public Response fetchProductById(@PathParam("id") String productId,@Suspended final AsyncResponse asyncResponse) {
 		// retrieve information about the reward with the provided id
-		JsonDocument doc = service.read(productId);
+		 JsonDocument doc=null;
+		System.out.println("productId"+productId);
+		 asyncResponse.setTimeoutHandler(new TimeoutHandler() {
+			  
+	         @Override
+	         public void handleTimeout(AsyncResponse asyncResponse) {
+	             asyncResponse.resume(Response.status(Response.Status.SERVICE_UNAVAILABLE)
+	                     .entity("Service is taking long time to responde !!! Please retry again after some time.").build());
+	         }
+	     });
+	     asyncResponse.setTimeout(7, TimeUnit.SECONDS);
+	     
+	     new Thread(new Runnable() {
+	  
+	         @Override
+	         public void run() {
+	        	 JsonDocument result = veryExpensiveOperation();
+	        	 System.out.println(result);
+	        	 JsonObject jsonValue = result.content();
+	             asyncResponse.resume(jsonValue.toString());
+	            
+	         }
+	  
+	         private JsonDocument veryExpensiveOperation() {
+	             // ... very expensive operation that typically finishes within 30 seconds
+	        	 JsonDocument doc=null;
+	        	 try{	        		
+	        		System.out.println("Inside the fetchproductById");
+	        		 doc = service.read(productId);	  
+	        		 int time=Util.generateRandom();
+	        		 System.out.println(time*1000);
+	        		 Thread.sleep(time*1000);	
+	        	}catch(InterruptedException e){
+	        		
+	        		e.printStackTrace();
+	        	} 
+	        	 
+	        	return doc;
+	         }
+	     }).start();
+		
+		
+		/*JsonDocument doc=null;
+		try{
+			System.out.println("Inside the fetchproductById");
+		 doc = service.read(productId);
+			Thread.sleep(5000);
+		}catch(Exception e){
+			e.printStackTrace();
+		}	*/	
+		
 		if (doc != null) {
-	            return Response.ok(doc.content().toString()).build();
+	            return Response.ok(doc).build();
 	    } else {
 	            return Response.status(Status.NOT_FOUND).build();
 	    }
@@ -153,6 +213,7 @@ public class ProductResource {
         return Response.status(Status.OK).entity(message).build();
 	}
 	
+	@Path("productType/{type}")
 	@GET
 	public Response getProductsByType(@QueryParam("type") String productType) {
 		ViewResult result = service.findAllByCriteria("dev_product","ProductByType",productType,0,10);
@@ -247,6 +308,42 @@ public class ProductResource {
 	        
 	        return dataJsonObj;
 	  }
+	 
+	 
+	 @Path("/test/timeout")
+	 @GET
+	 public void asyncGetWithTimeout(@Suspended final AsyncResponse asyncResponse) {
+	     asyncResponse.setTimeoutHandler(new TimeoutHandler() {
+	  
+	         @Override
+	         public void handleTimeout(AsyncResponse asyncResponse) {
+	             asyncResponse.resume(Response.status(Response.Status.SERVICE_UNAVAILABLE)
+	                     .entity("Operation time out.").build());
+	         }
+	     });
+	     asyncResponse.setTimeout(30, TimeUnit.SECONDS);
+	  
+	     new Thread(new Runnable() {
+	  
+	         @Override
+	         public void run() {
+	             String result = veryExpensiveOperation();
+	             asyncResponse.resume(result);
+	         }
+	  
+	         private String veryExpensiveOperation() {
+	             // ... very expensive operation that typically finishes within 30 seconds
+	        	try{
+	        		Thread.sleep(30000);	
+	        	}catch(InterruptedException e){
+	        		
+	        		e.printStackTrace();
+	        	} 
+	        	 
+	        	return "success";
+	         }
+	     }).start();
+	 }
 	
 	
 	/*

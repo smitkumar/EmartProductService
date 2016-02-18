@@ -1,9 +1,11 @@
 package com.emart.app.main;
 
 import io.dropwizard.Application;
+import io.dropwizard.client.HttpClientBuilder;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 
+import org.apache.http.client.HttpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +25,10 @@ public class App extends Application<CauchbaseConfiguration> {
 		LOGGER.info("Method App#run() called");
 		System.out.println("Hello world, by Dropwizard!");
 		System.out.println("Coucbase Bucket : " + config.getCouchbaseBucket());
+		
+		 HttpClient httpClient = new HttpClientBuilder(e).using(config.getHttpClientConfiguration())
+                .build("TimeOut");
+		 
 		e.jersey().register(new ProductResource(config));
 	}
 

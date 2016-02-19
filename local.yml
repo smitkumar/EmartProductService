@@ -1,4 +1,10 @@
 couchbase.nodes:
-- http://localhost:8080
+- http://localhost:8085
 couchbase.bucket: Product-Info
 couchbase.password: 
+
+server:
+    type: default
+    applicationConnectors:
+        -   type: http
+            port: 8085

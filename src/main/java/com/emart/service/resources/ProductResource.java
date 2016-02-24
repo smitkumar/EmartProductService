@@ -38,6 +38,7 @@ import com.couchbase.client.java.document.json.JsonObject;
 import com.couchbase.client.java.error.DocumentAlreadyExistsException;
 import com.couchbase.client.java.error.DocumentDoesNotExistException;
 import com.couchbase.client.java.view.ViewResult;
+import com.emart.app.hystrix.command.OpenCLoseCommand;
 import com.emart.app.hystrix.command.ProductServiceCommand;
 import com.emart.app.hystrix.command.TimeOutCommand;
 import com.emart.app.main.CauchbaseConfiguration;
@@ -45,6 +46,7 @@ import com.emart.database.couchbase.DataBaseManager;
 import com.emart.service.model.ProductInfo;
 import com.emart.service.util.Constant;
 import com.emart.service.util.Util;
+import com.netflix.hystrix.HystrixCircuitBreaker;
 import com.netflix.hystrix.HystrixCommand;
 import com.netflix.hystrix.HystrixCommandGroupKey;
 
@@ -159,6 +161,42 @@ public class ProductResource {
 	
 	
 	
+	/*
+	 * This is Hystrix circuit breaker demo
+	 * This Rest Interface is to fetch product based on ID from  couchbase database.
+	 * */
+	
+	
+	@GET
+	@Path("hystrix/circuitbreak/{id}")
+	public Response fetchProduct2(@PathParam("id") String productId) {
+		// retrieve information about the reward with the provided id
+		String response=null;    
+		JsonDocument doc=null;
+	        	 try{
+	        		//TimeOutCommand command=new  TimeOutCommand(7000,service,productId);
+	        		 //CLoseBreaker,false  -- OpenBreaker,true
+	        		 OpenCLoseCommand command=new OpenCLoseCommand(service,"CloseBreaker",false);
+	        		 response=command.execute();
+	        		 System.out.println("response from the server"+response);
+	        		 
+	        		/* HystrixCircuitBreaker circuitBreaker= HystrixCircuitBreaker.Factory
+	        				 .getInstance(command.getCommandKey(),null,null,null);        				
+	        				 
+	        				 circuitBreaker.allowRequest();*/
+	        			
+	        	}catch(Exception e){
+	        		
+	        		e.printStackTrace();
+	        	} 
+	        	
+		
+		if (response != null) {
+	            return Response.ok(response).build();
+	    } else {
+	            return Response.status(Status.NOT_FOUND).build();
+	    }
+	}
 	
 	
 
